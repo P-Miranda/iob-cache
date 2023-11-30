@@ -20,6 +20,8 @@ from iob_ram_sp import iob_ram_sp
 from iob_reg import iob_reg
 from iob_reg_re import iob_reg_re
 from iob_ram_sp_be import iob_ram_sp_be
+from axi_ram import axi_ram
+from iob_tasks import iob_tasks
 
 
 class iob_cache(iob_module):
@@ -28,7 +30,6 @@ class iob_cache(iob_module):
         """Init module attributes"""
         cls.name = "iob_cache"
         cls.version = "V0.10"
-        cls.flows = "emb sim doc fpga"
         cls.setup_dir = os.path.dirname(__file__)
         cls.BE_DATA_W = "32"
         for arg in sys.argv[1:]:
@@ -88,14 +89,17 @@ class iob_cache(iob_module):
             iob_utils,
             iob_regfile_sp,
             iob_fifo_sync,
-            (iob_ram_2p, {"purpose": "simulation"}),
-            (iob_ram_2p, {"purpose": "fpga"}),
-            (iob_ram_sp, {"purpose": "simulation"}),
-            (iob_ram_sp, {"purpose": "fpga"}),
             iob_reg,
             iob_reg_re,
-            # Simulation headers & modules
+            # fpga files
+            (iob_ram_2p, {"purpose": "fpga"}),
+            (iob_ram_sp, {"purpose": "fpga"}),
+            # simulation files
+            (iob_tasks, {"purpose": "simulation"}),
+            (iob_ram_2p, {"purpose": "simulation"}),
+            (iob_ram_sp, {"purpose": "simulation"}),
             (iob_ram_sp_be, {"purpose": "simulation"}),
+            (axi_ram, {"purpose": "simulation"}),
         ]
 
         cls.confs = [
@@ -571,7 +575,7 @@ class iob_cache(iob_module):
                         "type": "W",
                         "n_bits": 1,
                         "rst_val": 0,
-                        "addr": 29,
+                        "addr": 32,
                         "log2n_items": 0,
                         "autoreg": False,
                         "descr": "Invalidate the cache data contents by writing any value to this register.",
@@ -581,6 +585,16 @@ class iob_cache(iob_module):
         ]
 
         cls.block_groups += []
+
+    @classmethod
+    def _post_setup(cls):
+        src_path = os.path.join(cls.build_dir, "hardware/src")
+        super()._post_setup()
+        if cls.BE_IF != "AXI4":
+            os.remove(os.path.join(src_path, "iob_cache_back_end_axi.v"))
+            os.remove(os.path.join(src_path, "iob_cache_write_channel_axi.v"))
+            os.remove(os.path.join(src_path, "iob_cache_read_channel_axi.v"))
+            os.remove(os.path.join(src_path, "iob_cache_axi.v"))
 
 
 if __name__ == "__main__":
